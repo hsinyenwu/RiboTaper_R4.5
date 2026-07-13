@@ -1,0 +1,46 @@
+# RiboTaper (modernized 2026) — Apptainer / Singularity definition
+#
+#   apptainer build ribotaper.sif apptainer.def
+#   apptainer exec ribotaper.sif Ribotaper.sh --help
+#   apptainer exec --bind "$PWD":/data ribotaper.sif \
+#       create_annotation_files.bash /data/annotation.gtf /data/genome.fa false false /data/annot_dir
+#
+# (Use `singularity` in place of `apptainer` on older installations.)
+
+Bootstrap: docker
+From: condaforge/miniforge3:24.11.3-2
+
+%files
+    . /opt/ribotaper
+
+%post
+    set -e
+    export LC_ALL=C.UTF-8 LANG=C.UTF-8
+    cd /opt/ribotaper
+    # 1) Environment with the modern tool stack
+    mamba env create -f environment.yml
+    mamba clean -a -y
+    # 2) Activate it for the remaining build steps
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate ribotaper
+    # 3) XNomial (+ any package lacking a conda build on this arch, e.g. multitaper)
+    Rscript extras/install_R_packages.R
+    # 4) Build and install RiboTaper
+    autoreconf -fi
+    ./configure --prefix=/usr/local/ribotaper
+    make
+    make install
+
+%environment
+    export LC_ALL=C.UTF-8 LANG=C.UTF-8
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate ribotaper
+    export PATH=/usr/local/ribotaper/bin:$PATH
+
+%runscript
+    exec "$@"
+
+%labels
+    Name RiboTaper
+    Version 1.3.1a-mod2026
+    Description Modernized RiboTaper (bedtools>=2.27, samtools>=1.x, R>=4.5)

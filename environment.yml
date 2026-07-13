@@ -1,0 +1,40 @@
+# RiboTaper (modernized 2026) conda/mamba environment
+#
+# Creates a self-contained environment with the modern bedtools, samtools and R
+# stack that the updated RiboTaper scripts target.
+#
+#   mamba env create -f environment.yml      # (or: conda env create -f environment.yml)
+#   conda activate ribotaper
+#   Rscript extras/install_R_packages.R      # installs XNomial (+ any pkg lacking a conda build)
+#   ./configure --prefix=$CONDA_PREFIX/ribotaper && make && make install
+#
+# Versions are given as lower bounds; the pipeline was validated with
+# bedtools 2.31.1, samtools 1.24 and R 4.5.3.  For a fully locked environment,
+# create it once and export it with `conda env export > environment.lock.yml`.
+name: ribotaper
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bedtools>=2.27          # unified `bedtools <subcommand>` interface + >=2.24 coverage semantics
+  - samtools>=1.7           # modern HTSlib-based samtools
+  - r-base>=4.4             # tested on 4.5.3
+  # ---- R packages available as conda builds ----
+  - r-seqinr
+  - r-ade4
+  - r-domc
+  - r-foreach
+  - r-iterators
+  # ---- build tooling (needed to (re)generate configure and to compile XNomial) ----
+  - autoconf
+  - automake
+  - make
+  - c-compiler
+  - cxx-compiler
+  - fortran-compiler
+  # NOTE: two R packages are installed by the helper below rather than by conda, so that
+  # this file solves on every CPU architecture (incl. linux-aarch64 / Apple Silicon):
+  #   * multitaper  — no conda build on some arches; compiled from CRAN source
+  #   * XNomial     — archived on CRAN in 2021, no conda package
+  # After `conda activate ribotaper`, run:
+  #     Rscript extras/install_R_packages.R
