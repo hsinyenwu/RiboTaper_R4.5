@@ -47,23 +47,36 @@ mkdir -p data_tracks
 
 echo "-----Calculating coverage tracks for each exon-----"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RIBO_unique.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_unique_counts"_$3"
+## --- Low-memory coverage via bedtools streaming (-sorted) --------------------
+## bedtools >= 2.24 computes 'coverage' for -a and loads the -b file into RAM,
+## which OOMs on large BAMs. We stream both inputs with -sorted instead: build a
+## genome file in the BAMs' coordinate-sort order and sort the small region file
+## to match. Output is byte-identical to the default algorithm. (The lighter
+## P_sites_all / Centered_RNA calls stay on the default algorithm.)
+rt_gen="rt_genome_$3.txt"
+@SAMTOOLS@ view -H RIBO_best.bam | awk -F'\t' '/^@SQ/{c="";l=""; for(i=1;i<=NF;i++){if($i~/^SN:/)c=substr($i,4); if($i~/^LN:/)l=substr($i,4)} if(c!="")print c"\t"l}' > "$rt_gen"
+rt_reg="rt_region_sorted_$3.bed"
+@BEDTOOLS@ sort -g "$rt_gen" -i "$1" > "$rt_reg"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RNA_unique.bam | sort -k1,1 -k2,2g |  sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_unique_counts"_$3"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RIBO_unique.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_unique_counts"_$3"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RIBO_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' |  awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_best_counts"_$3"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RNA_unique.bam | sort -k1,1 -k2,2g |  sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_unique_counts"_$3"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RNA_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_best_counts"_$3"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RIBO_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' |  awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_best_counts"_$3"
+
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RNA_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_best_counts"_$3"
 
 
 @BEDTOOLS@ coverage -s -d -a $1 -b P_sites_all |  awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/P_sites_all_tracks"_$3"
 
 
-@BEDTOOLS@ coverage -s -d -split -a $1 -b RIBO_best.bam | awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/RIBO_tracks"_$3"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -d -split -a "$rt_reg" -b RIBO_best.bam | awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/RIBO_tracks"_$3"
 
-@BEDTOOLS@ coverage -s -d -split -a $1 -b RNA_best.bam | awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/RNA_tracks"_$3"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -d -split -a "$rt_reg" -b RNA_best.bam | awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/RNA_tracks"_$3"
 
 @BEDTOOLS@ coverage -s -d -a $1 -b Centered_RNA |  awk '{ print $1 ";" $2 ";" $3 ";" $4 ";" $5";" $6 "\t" "_" $8}' | awk -F"\t" '{if(a[$1])a[$1]=a[$1]" "$NF; else a[$1]=$NF}END{for (i in a)print i "\t" a[i]}'| sed 's/_//g' | sed 's/;/\t/g' | sort -k1,1 -k4,4 -k2,2g > data_tracks/Centered_RNA_tracks"_$3"
+
+rm -f "$rt_gen" "$rt_reg"
 
 echo "-----Merging tracks together-----"
 

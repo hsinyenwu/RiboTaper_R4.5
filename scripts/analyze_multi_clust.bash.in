@@ -41,13 +41,21 @@ if ! [[ -f "$1" ]]; then
 
 echo "-----Intersecting with unique/best alignments-----"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RIBO_unique.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_unique_counts"_$2"
+## Low-memory streaming coverage (-sorted); see create_tracks.bash for rationale.
+rt_gen="rt_genome_mc_$2.txt"
+@SAMTOOLS@ view -H RIBO_best.bam | awk -F'\t' '/^@SQ/{c="";l=""; for(i=1;i<=NF;i++){if($i~/^SN:/)c=substr($i,4); if($i~/^LN:/)l=substr($i,4)} if(c!="")print c"\t"l}' > "$rt_gen"
+rt_reg="rt_region_sorted_mc_$2.bed"
+@BEDTOOLS@ sort -g "$rt_gen" -i "$1" > "$rt_reg"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RNA_unique.bam | sort -k1,1 -k2,2g |  sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_unique_counts"_$2"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RIBO_unique.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_unique_counts"_$2"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RIBO_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' |  awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_best_counts"_$2"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RNA_unique.bam | sort -k1,1 -k2,2g |  sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_unique_counts"_$2"
 
-@BEDTOOLS@ coverage -s -split -a $1 -b RNA_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_best_counts"_$2"
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RIBO_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' |  awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RIBO_best_counts"_$2"
+
+@BEDTOOLS@ coverage -sorted -g "$rt_gen" -s -split -a "$rt_reg" -b RNA_best.bam | sort -k1,1 -k2,2g | sed 's/_//g' | awk '{ print $1 "_" $2 "_" $3 "_" $4 "_" $5"\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10}' > RNA_best_counts"_$2"
+
+rm -f "$rt_gen" "$rt_reg"
 
 echo "-----Done !!!-----"
 
