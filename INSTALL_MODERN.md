@@ -3,12 +3,26 @@
 Three options — pick one. All were validated with bedtools 2.31.1, samtools 1.24 and R 4.5.3.
 See `CHANGES_MODERNIZATION.md` for what changed and why.
 
+**First, download the code** from <https://github.com/hsinyenwu/RiboTaper_R4.5> (each option below then enters the folder):
+
+```bash
+git clone https://github.com/hsinyenwu/RiboTaper_R4.5.git
+```
+
 ---
 
 ## Option A — conda / mamba (recommended)
 
 ```bash
-cd Claude_update
+cd RiboTaper_R4.5
+
+# 0. (miniconda3 / anaconda users) update conda and switch to the free channels.
+#    Anaconda's paid "defaults" ToS does NOT apply to conda-forge / bioconda.
+conda update -n base -c conda-forge conda -y
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+conda install -n base -c conda-forge mamba -y          # optional, faster solver
 
 # 1. Create the environment with the modern tool stack
 mamba env create -f environment.yml          # or: conda env create -f environment.yml
@@ -33,7 +47,7 @@ create_annotation_files.bash  --help 2>/dev/null || echo "run with the arguments
 ## Option B — Docker
 
 ```bash
-cd Claude_update
+cd RiboTaper_R4.5
 docker build -t ribotaper:1.3.1a-mod .
 
 # run a RiboTaper command against data in the current directory
@@ -44,7 +58,7 @@ docker run --rm -v "$PWD":/data -w /data ribotaper:1.3.1a-mod \
 ## Option C — Apptainer / Singularity (HPC clusters)
 
 ```bash
-cd Claude_update
+cd RiboTaper_R4.5
 apptainer build ribotaper.sif apptainer.def
 
 apptainer exec --bind "$PWD":/data ribotaper.sif \

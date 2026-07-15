@@ -56,6 +56,13 @@ Inputs are aligned **Ribo-seq** and **RNA-seq** BAM files plus a genome and GTF 
 
 ## Installation
 
+**First, download the code** from <https://github.com/hsinyenwu/RiboTaper_R4.5>:
+
+```bash
+git clone https://github.com/hsinyenwu/RiboTaper_R4.5.git
+cd RiboTaper_R4.5
+```
+
 The **conda/mamba** route is recommended on CentOS and HPC systems: it installs the entire stack in user space (no root) and is independent of the system's (often ancient) packages.
 
 ### Option A — conda / mamba (recommended)
@@ -73,9 +80,7 @@ conda install -n base -c conda-forge mamba -y        # optional: much faster sol
 #   curl -L -O https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 #   bash Miniforge3-Linux-x86_64.sh -b -p $HOME/miniforge3 && source $HOME/miniforge3/etc/profile.d/conda.sh
 
-# 1. Get the code
-git clone https://github.com/hsinyenwu/RiboTaper_R4.5.git
-cd RiboTaper_R4.5
+# 1. (run these from inside the RiboTaper_R4.5 folder you cloned above)
 
 # 2. Create the environment (modern bedtools / samtools / R)
 mamba env create -f environment.yml

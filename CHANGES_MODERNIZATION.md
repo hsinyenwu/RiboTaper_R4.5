@@ -10,8 +10,8 @@ keeping the scientific logic byte-for-byte identical.
 XNomial (patched, see §7), multitaper, seqinr, ade4, doMC, foreach, iterators. The complete
 pipeline was run end-to-end on a synthetic dataset (see §9).
 
-The original download is preserved unmodified in `../Original/`. Everything below lives in
-`../Claude_update/`.
+The unmodified upstream original is at <https://github.com/ohlerlab/RiboTaper>; this repository
+is the modernized version.
 
 ---
 
