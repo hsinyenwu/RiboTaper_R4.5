@@ -1,6 +1,6 @@
 # RiboTaper (R 4.5 / modern-toolchain update)
 
-*Identification of translated ORFs from Ribosome Profiling (Ribo-seq) data — updated to run on today's software.*
+*Identification of translated ORFs from Ribosome Profiling (Ribo-seq) data — updated to run on today's (July, 2026) software.*
 
 ![R ≥ 4.5](https://img.shields.io/badge/R-%E2%89%A5%204.5-blue)
 ![bedtools ≥ 2.27](https://img.shields.io/badge/bedtools-%E2%89%A5%202.27-blue)
