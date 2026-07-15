@@ -12,6 +12,7 @@ This is a maintained fork of **RiboTaper v1.3.1a** (Calviello *et al.*, *Nature 
 - **Original code:** <https://github.com/ohlerlab/RiboTaper>
 - **What changed and why:** see [`CHANGES_MODERNIZATION.md`](CHANGES_MODERNIZATION.md)
 - **Validated with:** bedtools 2.31.1, samtools 1.24, R 4.5.3 (full synthetic pipeline run — see `CHANGES_MODERNIZATION.md` §9)
+- **Memory-efficient:** coverage-track building streams the BAMs (`bedtools coverage -sorted`) instead of loading them into RAM, so deep libraries don't run out of memory — see [Memory & performance](#memory--performance)
 
 ---
 
@@ -26,6 +27,7 @@ This is a maintained fork of **RiboTaper v1.3.1a** (Calviello *et al.*, *Nature 
 - [Input requirements (read this before running)](#input-requirements-read-this-before-running)
 - [Output files & ORF categories](#output-files--orf-categories)
 - [Choosing read lengths and P-site offsets](#choosing-read-lengths-and-p-site-offsets)
+- [Memory & performance](#memory--performance)
 - [Troubleshooting](#troubleshooting)
 - [Repository layout](#repository-layout)
 - [Citation & license](#citation--license)
@@ -48,6 +50,7 @@ Inputs are aligned **Ribo-seq** and **RNA-seq** BAM files plus a genome and GTF 
 | R | **4.0** (≥ **4.5** recommended) | 4.5.3 |
 | R packages | `XNomial`, `multitaper`, `seqinr`, `ade4`, `doMC`, `foreach`, `iterators` | — |
 | Cores | **≥ 2** | — |
+| Memory (RAM) | scales with library size — see [Memory & performance](#memory--performance) | — |
 
 > `XNomial` was archived on CRAN in 2021 and must be installed from the archive (handled automatically by [`extras/install_R_packages.R`](extras/install_R_packages.R)).
 
@@ -58,10 +61,17 @@ The **conda/mamba** route is recommended on CentOS and HPC systems: it installs 
 ### Option A — conda / mamba (recommended)
 
 ```bash
-# 0. Get conda if you don't have it (Miniforge ships mamba):
-curl -L -O https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
-bash Miniforge3-Linux-x86_64.sh -b -p $HOME/miniforge3
-source $HOME/miniforge3/etc/profile.d/conda.sh
+# 0a. ALREADY HAVE conda (miniconda3 / anaconda)? Update it, and use the free
+#     conda-forge + bioconda channels (this avoids Anaconda's paid "defaults" ToS):
+conda update -n base -c conda-forge conda -y
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+conda install -n base -c conda-forge mamba -y        # optional: much faster solver
+
+# 0b. ...or install Miniforge fresh (ships mamba, conda-forge by default):
+#   curl -L -O https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+#   bash Miniforge3-Linux-x86_64.sh -b -p $HOME/miniforge3 && source $HOME/miniforge3/etc/profile.d/conda.sh
 
 # 1. Get the code
 git clone https://github.com/hsinyenwu/RiboTaper_R4.5.git
@@ -236,12 +246,29 @@ This is the **single most important decision** in the pipeline. Different read l
 
 If you already have P-site positions, put a 6-column, 1-nt BED file named `P_sites_all` in the working directory and RiboTaper will use it.
 
+## Memory & performance
+
+The heaviest steps are P-site calculation and coverage-track building (in `Ribotaper.sh`) and the per-exon multitaper analysis in R.
+
+**Coverage is memory-efficient in this build.** bedtools ≥ 2.24 computes `coverage` for the `-a` file and loads `-b` into RAM. The original code streamed the BAM, but the `-a`/`-b` swap required for correct modern semantics would otherwise load the (large) BAMs into memory and can be OOM-killed on real data. This fork instead streams the BAM coverage with `bedtools coverage -sorted` (reusing the BAMs' existing coordinate sort), so memory stays low and flat regardless of BAM size — with **byte-identical output**. (See `CHANGES_MODERNIZATION.md` §3.1.)
+
+**How to tell you ran out of memory.** An out-of-memory kill doesn't always stop the job with an obvious error — instead a coverage step is killed mid-write and leaves a **0-byte output file**, and the run then fails later in `tracks_analysis.R` (typically a `read.table` error). So after a run, check the sizes of the count/track files in your output directory:
+
+```bash
+ls -l *_counts_* data_tracks/*_tracks_*
+```
+
+If any of these come out **0 bytes** (commonly `RIBO_best_counts_*` and `RIBO_tracks_*`, since the Ribo-seq BAM is usually the largest input), the job hit its memory ceiling — **request more memory and resubmit.** On SLURM, `seff <jobid>` confirms it (`State: OUT_OF_MEMORY`, Memory Efficiency ~100%) and reports the actual peak usage, so you can raise `--mem` accordingly and right-size future jobs.
+
+Memory scales mainly with the `P_sites_all` / `Centered_RNA` point files and the R analysis, not with the BAMs. RiboTaper requires **≥ 2 cores**; more cores speed up the R steps, but each worker holds data, so memory grows modestly with core count.
+
 ## Troubleshooting
 
 - **`bedtools getfasta` silently skips regions / few ORFs found** → your genome `.fai` index is stale. Re-run `samtools faidx genome.fa` after any change to the FASTA.
 - **`configure` errors that a tool is too old** → install via `environment.yml`, or point `configure` at newer binaries (Option D).
 - **`R package XNomial could not be loaded`** → run `Rscript extras/install_R_packages.R`.
 - **"n of cores required >1"** → pass `<n_cores>` ≥ 2.
+- **Job OOM-killed at "Creating tracks", or empty `RIBO_best_counts_*` followed by a `tracks_analysis.R` `read.table` error** → make sure you reinstalled the current build (BAM coverage now streams via `bedtools coverage -sorted`); if a later step still runs out of memory, raise `--mem` (see [Memory & performance](#memory--performance)).
 - **Empty/failed run** → confirm chromosome names match across FASTA/GTF/BAM and contain no underscores; confirm the GTF has both coding and non-coding genes.
 - **Old CentOS 7 + conda glibc errors** → use the Apptainer/Docker image instead (Options B/C).
 

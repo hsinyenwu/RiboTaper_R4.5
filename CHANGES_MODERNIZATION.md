@@ -81,6 +81,32 @@ preserved, and the appended count/depth columns land in exactly the same positio
 downstream `awk`/R code expects. Affected files: `scripts/create_tracks.bash.in`,
 `scripts/analyze_multi_clust.bash.in` (12 call sites total).
 
+## 3.1 Coverage memory — stream large BAMs with `-sorted`
+
+A consequence of the `-a`/`-b` swap in §3: bedtools computes coverage for `-a` and
+**loads the `-b` file into memory**, whereas the original `-abam` form *streamed*
+the BAM and loaded only the small region file. With the swap the large BAMs became
+the in-memory (`-b`) input, so on real datasets `create_tracks.bash` could exhaust
+RAM (observed on a real run: OOM-killed at 30 GB on the `RIBO_best.bam` coverage
+step, which silently produced empty `RIBO_best_counts_*`/`RIBO_tracks_*` files and
+then failed `tracks_analysis.R`).
+
+Fix: the six BAM-based coverage calls in `create_tracks.bash` (and the four in
+`analyze_multi_clust.bash`) now use bedtools' **sorted/streaming** algorithm, which
+streams both inputs and keeps memory low and flat regardless of BAM size:
+
+```bash
+# genome file in the BAM's coordinate-sort order, region sorted to match
+samtools view -H RIBO_best.bam | awk -F'\t' '/^@SQ/{...print SN,LN}' > genome.txt
+bedtools sort -g genome.txt -i regions.bed > regions.sorted.bed
+bedtools coverage -sorted -g genome.txt -s -split -a regions.sorted.bed -b RIBO_best.bam
+```
+
+The STAR BAMs are already coordinate-sorted, so only the small region file needs
+sorting. Output is **byte-identical** to the default algorithm (verified for both
+count and per-base `-d` modes). The lighter `P_sites_all` / `Centered_RNA` point
+files stay on the default algorithm.
+
 ## 4. bedtools `getfasta` — `-name` → `-nameOnly`
 
 From **bedtools 2.27**, `getfasta -name` writes headers of the form `name::chr:start-end`
