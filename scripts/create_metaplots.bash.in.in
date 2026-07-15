@@ -54,7 +54,10 @@ echo "Downsampling to 10%..."
 
 echo "Intersecting alignments with start/stop sites ..."
 
-@BEDTOOLS@ bamtobed -i sample_to_metapl.bam -bed12 -split | @BEDTOOLS@ window -w 100 -sm -b stdin -a $2 | awk '{print $7 "\t" $8 "\t" $9 "\t" $10 "\t" $11 "\t" $12 "\t" $13 "\t" $14 "\t" $15 "\t" $16 "\t" $17 "\t" $18}' | sort -k1,1 -k2,2n | @BEDTOOLS@ closest -s -t "last" -a stdin -b <(sort -k1,1 -k2,2n $2) > $3
+# Stream the reads through `window` (reads on -a, the small start/stop file on -b) so
+# bedtools only loads the tiny -b file into RAM instead of the whole read set. Output is
+# identical; the read (12 BED12 columns) is now the -a side, i.e. columns 1-12.
+@BEDTOOLS@ bamtobed -i sample_to_metapl.bam -bed12 -split | @BEDTOOLS@ window -w 100 -sm -a stdin -b $2 | awk '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8 "\t" $9 "\t" $10 "\t" $11 "\t" $12}' | sort -k1,1 -k2,2n | @BEDTOOLS@ closest -s -t "last" -a stdin -b <(sort -k1,1 -k2,2n $2) > $3
 
 if !  [[ -s $3 ]]; then
      echo "!!!!!   no intersections found, check input files"
