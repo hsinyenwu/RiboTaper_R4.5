@@ -315,3 +315,15 @@ If you use RiboTaper, please cite the original method:
 > Calviello L, Mukherjee N, Wyler E, Zauber H, Hirsekorn A, Selbach M, Landthaler M, Obermayer B, Ohler U. **Detecting actively translated open reading frames in ribosome profiling data.** *Nature Methods* 13, 165–170 (2016). doi:10.1038/nmeth.3688
 
 RiboTaper is free software under the **GNU General Public License v3** (see the license notice in each script). This fork only modernizes the toolchain; the algorithm and its authorship are unchanged.
+
+## Disclaimer
+
+This is an **unofficial, community-maintained fork** of RiboTaper — not affiliated with or
+endorsed by the original authors (Ohler lab, MDC Berlin). It updates the original code for
+modern bedtools / samtools / R and includes small behavioral fixes (see
+`CHANGES_MODERNIZATION.md`). Calude Opus 4.8 Max was used for this modernization.  
+
+It is provided **"as is", without warranty of any kind, and you use it at your own risk**
+(consistent with the GNU GPL v3 it is licensed under). Please validate results against your
+own data — and, where possible, against the original RiboTaper — and cite the original method
+(see Citation & license).
