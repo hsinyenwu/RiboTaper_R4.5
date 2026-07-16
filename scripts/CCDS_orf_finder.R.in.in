@@ -722,11 +722,11 @@ CCDS_orfs<-foreach(j=1:length(transcr_sites),.combine=rbind,.multicombine=T) %do
                                 nt_to_rem<-nt_to_rem+nt_in_betw
                         }
                         
-                        if(st_ex==end_ex & orfa$strand=="+"){coord_end<-coord_start+orfa$ORF_length+1}
-                        if(st_ex==end_ex & orfa$strand=="-"){coord_end<-coord_start-orfa$ORF_length+1}
+                        if(st_ex==end_ex & orfa$strand=="+"){coord_end<-coord_start+orfa$ORF_length+3}
+                        if(st_ex==end_ex & orfa$strand=="-"){coord_end<-coord_start-orfa$ORF_length-3}
                         
-                        if(st_ex!=end_ex & orfa$strand=="+"){coord_end<-exons_in_transcr_data[end_ex,"start"] + (orfa$ORF_length-nt_to_rem)+1}
-                        if(st_ex!=end_ex & orfa$strand=="-"){coord_end<-exons_in_transcr_data[end_ex,"end"] - (orfa$ORF_length-nt_to_rem)+1}
+                        if(st_ex!=end_ex & orfa$strand=="+"){coord_end<-exons_in_transcr_data[end_ex,"start"] + (orfa$ORF_length-nt_to_rem)+3}
+                        if(st_ex!=end_ex & orfa$strand=="-"){coord_end<-exons_in_transcr_data[end_ex,"end"] - (orfa$ORF_length-nt_to_rem)-3}
                         
                         if(orfa$strand=="-"){
                                 coord_start2<-coord_start
