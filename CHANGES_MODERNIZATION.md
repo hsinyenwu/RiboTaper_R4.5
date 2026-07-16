@@ -107,6 +107,12 @@ sorting. Output is **byte-identical** to the default algorithm (verified for bot
 count and per-base `-d` modes). The lighter `P_sites_all` / `Centered_RNA` point
 files stay on the default algorithm.
 
+The same memory reasoning applies to `create_metaplots.bash` (and its `_nodo`
+variant): its `bedtools window` step loaded the (large) read set into RAM via
+`-b stdin`. The reads are now streamed on `-a` with only the small start/stop file
+on `-b`, so metagene generation stays low-memory too (output is identical; the read
+BED12 is simply read back from columns 1-12 instead of 7-18).
+
 ## 4. bedtools `getfasta` — `-name` → `-nameOnly`
 
 From **bedtools 2.27**, `getfasta -name` writes headers of the form `name::chr:start-end`
@@ -211,6 +217,23 @@ the old `genome.fa.fai` (or re-run `samtools faidx genome.fa`) first. This is un
 behavior, but worth flagging.
 
 ---
+
+## 11. ORF genomic coordinates (`ORF_id_gen`) — stop-codon inclusion / off-by-one
+
+`ORF_id_gen` (`chr_start_end`) is the ORF's genomic span. Upstream RiboTaper computed the end as
+`coord_end = coord_start ± ORF_length + 1`, where `ORF_length = stop_pos − start_pos` is always a
+multiple of 3. The `+1` placed the end on the **2nd base of the stop codon**, and because the minus
+strand subtracts `ORF_length`, the span came out `ORF_length + 1` on `+` and `ORF_length − 1` on `−`
+— a strand-asymmetric off-by-one, so `end − start` was never a clean multiple of 3 even for
+single-exon ORFs.
+
+Fix (`CCDS_orf_finder.R` and `NONCCDS_orf_finder.R`, single- and multi-exon lines): the `+1` became
+`+3` on the `+` strand and `−3` on the `−` strand, so the span now runs from the start codon through
+the full stop codon. Single-exon ORFs now report `end − start` as a multiple of 3 on both strands.
+Multi-exon ORFs still include intron length in the genomic span (inherent to spliced genes — for a
+splicing-independent coding length use `stop_pos − start_pos + 3`). This changes only the reported
+genomic ORF end (`ORF_id_gen`, `translated_ORFs_*.bed`, and the CDS-overlap strings); it does **not**
+change which ORFs are called, the peptides, P-sites, or periodicity statistics.
 
 ### File-by-file summary
 

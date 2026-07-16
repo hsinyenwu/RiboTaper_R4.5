@@ -1,6 +1,6 @@
 # RiboTaper (R 4.5 / modern-toolchain update)
 
-*Identification of translated ORFs from Ribosome Profiling (Ribo-seq) data — updated to run on today's (July, 2026) software.*
+*Identification of translated ORFs from Ribosome Profiling (Ribo-seq) data — updated to run on today's software.*
 
 ![R ≥ 4.5](https://img.shields.io/badge/R-%E2%89%A5%204.5-blue)
 ![bedtools ≥ 2.27](https://img.shields.io/badge/bedtools-%E2%89%A5%202.27-blue)
@@ -244,6 +244,21 @@ Main results (in your working directory after `Ribotaper.sh`):
 - `uORFs` / `dORFs` — upstream / downstream ORFs in CCDS genes, not overlapping coding exons
 - `nonccds_coding_ORFs` — in non-CCDS genes but overlapping coding exons
 - `ncORFs` — in non-CCDS genes, not overlapping any coding exon (e.g. ORFs in lncRNAs)
+
+### ORF coordinates (`ORF_id_gen`) and lengths
+
+`ORF_id_gen` (`chr_start_end`) is the ORF's **genomic** span, running from the start codon through the **stop codon**. This fork fixes an upstream off-by-one that placed the end on the *2nd* base of the stop codon (and was `+1` on the `+` strand but `−1` on the `−` strand) — see `CHANGES_MODERNIZATION.md`.
+
+- For a **single-exon** ORF, `end − start` equals the coding length (start codon through stop codon) and is therefore a **multiple of 3**.
+- For a **multi-exon** ORF, `end − start` is the genomic footprint and so **includes the introns** — it is *not* a multiple of 3. That is expected for a spliced gene, not an error, and no coordinate can change it.
+
+So `ORF_id_gen` will legitimately be a mix (single-exon ORFs multiple-of-3, spliced ORFs not). If you need a per-ORF coding length that is **always** a multiple of 3 regardless of splicing, use the transcript-level columns in `ORFs_max` / `ORFs_max_filt`:
+
+```
+CDS length (nt, including stop) = stop_pos − start_pos + 3
+```
+
+`stop_pos − start_pos` is the exact coding length and is a multiple of 3 for every ORF, single- or multi-exon.
 
 ## Choosing read lengths and P-site offsets
 
